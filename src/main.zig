@@ -101,7 +101,7 @@ fn editEscape(state: *LinenoiseState) !void {
     }
 }
 
-fn linenoiseEdit(ln: *Linenoise, in: File, out: File, prompt: []const u8) !?[]const u8 {
+fn linenoiseEdit(ln: *Linenoise, in: File, out: File, prompt: []const u8) ?[]const u8 {
     var state = LinenoiseState.init(ln, in, out, prompt);
     defer state.buf.deinit(state.allocator);
 
@@ -109,7 +109,9 @@ fn linenoiseEdit(ln: *Linenoise, in: File, out: File, prompt: []const u8) !?[]co
     state.ln.history.current = state.ln.history.hist.items.len - 1;
     try state.refreshLine();
 
-    while (true) {
+    var status = true;
+
+    while (status) {
         var input_buf: [1]u8 = undefined;
         if ((try term.read(in, &input_buf)) < 1) return null;
         var c = input_buf[0];
@@ -125,14 +127,10 @@ fn linenoiseEdit(ln: *Linenoise, in: File, out: File, prompt: []const u8) !?[]co
             key_null, key_tab => {},
             key_ctrl_a => try state.editMoveHome(),
             key_ctrl_b => try state.editMoveLeft(),
-            key_ctrl_c => return error.CtrlC,
+            key_ctrl_c => return "",
             key_ctrl_d => {
-                if (state.buf.items.len > 0) {
-                    try state.editDelete();
-                } else {
-                    state.ln.history.pop();
-                    return null;
-                }
+                status = false;
+                continue;
             },
             key_ctrl_e => try state.editMoveEnd(),
             key_ctrl_f => try state.editMoveRight(),
